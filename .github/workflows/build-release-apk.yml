@@ -42,12 +42,20 @@ jobs:
       - name: Generate android/ platform scaffolding
         run: flutter create --platforms=android --project-name cotizador_app .
 
-      # pubspec.yaml declara assets/images/, assets/data/, assets/fonts/
-      # pero esos dirs no existen en el repo. flutter build falla si están
-      # declarados y no existen. Creamos stubs vacíos.
+      # flutter create con Flutter 3.27 genera AGP 8.1.0, pero
+      # webview_flutter ^4.4.2 requiere androidx.webkit:1.14.0 que exige AGP 8.1.1+.
+      # Parcheamos el AGP a 8.3.2 (estable) en el build.gradle generado.
+      - name: Patch AGP version in generated android/build.gradle
+        run: |
+          sed -i "s/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.3.2/g" android/build.gradle
+          echo "AGP version after patch:"
+          grep "com.android.tools.build:gradle" android/build.gradle
+
+      # pubspec.yaml declara assets/images/ y assets/data/ como dirs de assets.
+      # Flutter los acepta como dirs vacíos. Los fonts fueron removidos de pubspec.
       - name: Create stub asset directories
         run: |
-          mkdir -p assets/images assets/data assets/fonts
+          mkdir -p assets/images assets/data
 
       - name: flutter pub get
         run: flutter pub get
