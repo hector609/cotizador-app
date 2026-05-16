@@ -42,29 +42,29 @@ jobs:
       - name: Generate android/ platform scaffolding
         run: flutter create --platforms=android --project-name cotizador_app .
 
-      # flutter create con Flutter 3.27 genera AGP 8.1.0 (declarado en
-      # settings.gradle con la nueva Kotlin DSL / plugin management). Pero
-      # webview_flutter ^4.4.2 requiere androidx.webkit:1.14.0 que exige AGP 8.1.1+.
-      # Parcheamos el AGP a 8.3.2 (estable) en settings.gradle Y build.gradle
-      # para cubrir ambos formatos de template.
-      - name: Patch AGP version to 8.3.2
+      # flutter create con Flutter 3.27 genera AGP 8.1.0 y Gradle 8.3.
+      # webview_flutter ^4.4.2 exige AGP 8.1.1+; usamos AGP 8.3.2 que requiere Gradle 8.4.
+      # Parcheamos AGP en settings.gradle (Kotlin DSL) y Gradle wrapper.
+      - name: Patch AGP 8.3.2 + Gradle 8.4 wrapper
         run: |
-          echo "=== android/settings.gradle antes del patch ==="
-          cat android/settings.gradle || echo "(no existe)"
-          echo "=== android/build.gradle antes del patch ==="
-          cat android/build.gradle || echo "(no existe)"
+          echo "=== ANTES ==="
+          cat android/settings.gradle
+          cat android/gradle/wrapper/gradle-wrapper.properties
 
-          # Patch settings.gradle (Kotlin DSL — nuevo formato Flutter 3.27+)
+          # AGP en settings.gradle (nuevo formato Kotlin DSL Flutter 3.27+)
           sed -i 's/com\.android\.application" version "[0-9.]*"/com.android.application" version "8.3.2"/g' android/settings.gradle
           sed -i 's/com\.android\.library" version "[0-9.]*"/com.android.library" version "8.3.2"/g' android/settings.gradle
 
-          # Patch build.gradle (Groovy DSL — formato anterior)
+          # AGP en build.gradle (Groovy DSL — formato anterior, por si acaso)
           sed -i 's/com\.android\.tools\.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.3.2/g' android/build.gradle
 
-          echo "=== android/settings.gradle después del patch ==="
-          cat android/settings.gradle || echo "(no existe)"
-          echo "=== android/build.gradle después del patch ==="
-          cat android/build.gradle || echo "(no existe)"
+          # Gradle wrapper: AGP 8.3.2 requiere Gradle >= 8.4
+          sed -i 's|gradle-[0-9.]*-all\.zip|gradle-8.4-all.zip|g' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's|gradle-[0-9.]*-bin\.zip|gradle-8.4-bin.zip|g' android/gradle/wrapper/gradle-wrapper.properties
+
+          echo "=== DESPUÉS ==="
+          cat android/settings.gradle
+          cat android/gradle/wrapper/gradle-wrapper.properties
 
       # pubspec.yaml declara assets/images/ y assets/data/ como dirs de assets.
       # Flutter los acepta como dirs vacíos. Los fonts fueron removidos de pubspec.
