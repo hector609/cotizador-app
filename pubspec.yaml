@@ -66,9 +66,12 @@ flutter:
     - assets/images/
     - assets/data/
 
-  fonts:
-    - family: Roboto
-      fonts:
-        - asset: assets/fonts/Roboto-Regular.ttf
-        - asset: assets/fonts/Roboto-Bold.ttf
-          weight: 700
+  # fonts: Roboto está incluido en Flutter/Material — no se necesita declarar
+  # aquí. Cuando se agreguen fuentes custom (p.ej. Inter, Poppins) agregar
+  # los archivos TTF en assets/fonts/ y descomentar esta sección.
+  # fonts:
+  #   - family: Roboto
+  #     fonts:
+  #       - asset: assets/fonts/Roboto-Regular.ttf
+  #       - asset: assets/fonts/Roboto-Bold.ttf
+  #         weight: 700
