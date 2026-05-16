@@ -1,0 +1,90 @@
+name: Build & Release APK
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/build-release-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # Necesario para crear Releases
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.x'   # Compatible con sdk: '>=3.3.0 <4.0.0'
+          channel: 'stable'
+          cache: true
+
+      # El repo fue bootstrapped manualmente sin `flutter create` —
+      # no tiene directorio android/. Lo generamos en el runner.
+      - name: Generate android/ platform scaffolding
+        run: flutter create --platforms=android --project-name cotizador_app .
+
+      # pubspec.yaml declara assets/images/, assets/data/, assets/fonts/
+      # pero esos dirs no existen en el repo. flutter build falla si están
+      # declarados y no existen. Creamos stubs vacíos.
+      - name: Create stub asset directories
+        run: |
+          mkdir -p assets/images assets/data assets/fonts
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: Build release APK (universal)
+        run: flutter build apk --release
+
+      - name: Build split-per-abi (más liviano por arquitectura)
+        run: flutter build apk --release --split-per-abi
+        continue-on-error: true
+
+      - name: Compute tag (commit short SHA + timestamp)
+        id: tag
+        run: |
+          TAG="apk-$(date -u +%Y%m%d-%H%M)-${GITHUB_SHA:0:7}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building release tag: $TAG"
+
+      - name: Create GitHub Release con APK assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Cotizador APK ${{ steps.tag.outputs.tag }}
+          body: |
+            APK build automático del cotizador-app.
+
+            **Instalación Android:**
+            1. Descarga `app-release.apk` abajo
+            2. En tu Android: Configuración → Seguridad → Permitir orígenes desconocidos
+            3. Abre el APK descargado para instalar
+
+            Commit: ${{ github.sha }}
+          generate_release_notes: false
+          make_latest: true
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
